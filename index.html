@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KM Only - Presensi SMKS Nasional Bandung</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root { --bg: #0f172a; --accent: #00f2fe; --glass: rgba(255, 255, 255, 0.05); --border: rgba(255, 255, 255, 0.1); }
+        body { font-family: 'Poppins', sans-serif; background: radial-gradient(circle at top right, #1e3a8a, #0f172a); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; color: #fff; }
+        .container { background: var(--glass); backdrop-filter: blur(15px); padding: 30px; border-radius: 30px; box-shadow: 0 0 40px rgba(0, 242, 254, 0.15); width: 100%; max-width: 500px; text-align: center; border: 1px solid var(--border); margin-bottom: 25px; box-sizing: border-box; }
+        .logo-atas { height: 70px; filter: drop-shadow(0 0 8px var(--accent)); margin-bottom: 10px; }
+        h2 { font-weight: 800; text-transform: uppercase; background: linear-gradient(to right, #00f2fe, #4facfe); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 10px 0 5px; }
+        h4 { color: #94a3b8; font-size: 13px; margin: 0 0 20px; }
+        label { font-weight: 600; display: block; margin-top: 20px; color: var(--accent); text-align: left; font-size: 11px; text-transform: uppercase; }
+        select, input, .file-input { width: 100%; padding: 14px; margin-top: 8px; background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 15px; color: white; font-size: 15px; box-sizing: border-box; outline: none; }
+        .status-container { display: flex; gap: 8px; margin-top: 12px; }
+        .status-option { flex: 1; background: rgba(255,255,255,0.05); padding: 12px 5px; border-radius: 15px; cursor: pointer; border: 1px solid transparent; font-weight: 600; font-size: 11px; text-align: center; transition: 0.3s; }
+        .status-option input { display: none; }
+        .status-option:has(input:checked) { border-color: var(--accent); background: rgba(0, 242, 254, 0.15); color: var(--accent); }
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 15px; cursor: pointer; font-size: 15px; font-weight: 800; transition: 0.4s; margin-top: 25px; text-transform: uppercase; }
+        .btn-main { background: linear-gradient(45deg, #00f2fe, #4facfe); color: #000; box-shadow: 0 5px 15px rgba(0, 242, 254, 0.3); }
+        .rekap-section { width: 100%; max-width: 500px; background: var(--glass); padding: 20px; border-radius: 25px; border: 1px solid var(--border); box-sizing: border-box; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; color: #94a3b8; font-size: 11px; padding-bottom: 10px; }
+        td { padding: 12px 0; border-top: 1px solid rgba(255,255,255,0.05); font-size: 12px; }
+        .hidden { display: none; }
+        .info-card { background: rgba(0, 242, 254, 0.05); padding: 15px; border-radius: 15px; margin-top: 15px; border: 1px dashed var(--accent); }
+        footer { margin-top: 30px; opacity: 0.5; font-size: 11px; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <img src="logo.png" alt="SMK" class="logo-atas">
+    <h2>Presensi KM</h2>
+    <h4>Private Class Report System</h4>
+
+    <label>Pilih Kelas</label>
+    <select id="kelasSelect" onchange="bukaInputAkses()">
+        <option value="" disabled selected>Pilih Kelas...</option>
+        <option value="X_DKV">X DKV</option><option value="X_MPLB">X MPLB</option><option value="X_TJKT">X TJKT</option>
+        <option value="XI_DKV">XI DKV</option><option value="XI_MPLB">XI MPLB</option><option value="XI_TJKT">XI TJKT</option>
+        <option value="XII_DKV">XII DKV</option><option value="XII_MPLB">XII MPLB</option><option value="XII_TJKT">XII TJKT</option>
+    </select>
+
+    <div id="sectionAkses" class="hidden">
+        <label>KM Passcode</label>
+        <input type="password" id="kodeAkses" placeholder="Ketik kode akses kelas...">
+        <button class="btn btn-main" onclick="verifikasiAkses()">Unlock Class List 🔓</button>
+    </div>
+
+    <div id="sectionSiswa" class="hidden">
+        <label>Cari Siswa</label>
+        <input type="text" id="cariNama" placeholder="Ketik nama siswa..." onkeyup="filterSiswa()">
+        <select id="daftarSiswa" size="4" style="margin-top: 10px;"></select>
+
+        <label>Status</label>
+        <div class="status-container">
+            <label class="status-option"><input type="radio" name="status" value="Sakit" checked onchange="toggleAlasan()"> 🤒 Sakit</label>
+            <label class="status-option"><input type="radio" name="status" value="Izin" onchange="toggleAlasan()"> ✉️ Izin</label>
+            <label class="status-option"><input type="radio" name="status" value="Alpa" onchange="toggleAlasan()"> 💀 Alpa</label>
+        </div>
+
+        <div id="boxAlasan" class="info-card">
+            <label>Sumber Keterangan</label>
+            <select id="sumberInfo" onchange="toggleBukti()">
+                <option value="Surat Dokter">Ada Surat Dokter</option>
+                <option value="Surat Orang Tua">Ada Surat Orang Tua</option>
+                <option value="Wali Kelas - Bukti">Wali Kelas (Ada Bukti Chat)</option>
+                <option value="Wali Kelas - Lisan">Wali Kelas (Hanya Lisan)</option>
+                <option value="Keterangan Teman">Keterangan Teman</option>
+            </select>
+
+            <div id="boxNamaInput" class="hidden">
+                <label id="labelNamaInput">Nama Konfirmator (Guru/Teman)</label>
+                <input type="text" id="namaInputExtra" placeholder="...">
+            </div>
+
+            <div id="boxUpload">
+                <label id="labelFoto">Upload Foto Bukti</label>
+                <input type="file" id="fotoFile" accept="image/*" class="file-input">
+            </div>
+        </div>
+
+        <button id="btnSimpan" class="btn btn-main" onclick="simpanData()">Kirim Laporan Kelas 🚀</button>
+    </div>
+</div>
+
+<div class="rekap-section">
+    <table id="tabelRekap">
+        <thead><tr><th>Nama</th><th>Status</th><th>Keterangan</th></tr></thead>
+        <tbody></tbody>
+    </table>
+    <button class="btn" style="background: #2ecc71; color: white; margin-top: 15px; font-size: 12px; padding: 10px;" onclick="exportToExcel()">Download Excel 📑</button>
+</div>
+
+<footer>KM Reporting Tool | Ruas STuDiO 🔥</footer>
+
+<script>
+    // URL Deployment terbaru lo sudah terpasang!
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlnqsRCYPF4D6WaZlhnr7tG3x6fCx81IkhwfryitKzqz4jdtOi5B_dw2eXu4wPic3h/exec"; 
+
+    const dataSekolah = {
+        "X_DKV": [{i:"81463415", n:"Andria Okta Dwiviandsyah"},{i:"91817222", n:"Az-Zahra Fajria Ramadhani"},{i:"98998307", n:"Christian Rizky Farrell"},{i:"108848574", n:"Elnazriel Caspian"},{i:"3106225993", n:"Galih Utama Riyadi Putra"},{i:"98772582", n:"Razaan Hibatullah Al Maliik"},{i:"109484929", n:"Silfhia Nuraisyah Wiradi Sastra"},{i:"98044477", n:"Sohib Mubarok"}],
+        "X_TJKT": [{i:"91974851", n:"Arif Faith Ghofar"},{i:"98992472", n:"Azriel Anabiel Putra Wijaya"},{i:"91169985", n:"Dava Permana Ilham"},{i:"101975169", n:"Dimas Agustian"},{i:"93853218", n:"Dyas Adli Anugrah"},{i:"96553810", n:"Elphasa Ibrahim Adha"},{i:"104126058", n:"Januar Fadlan"},{i:"105259478", n:"M Gaza Ainurrafiq"},{i:"103886555", n:"Mochammad Deva Ramadhan"},{i:"105940202", n:"Mochammad Rafa Atepyan"},{i:"3105031713", n:"Mugia Nugraha Putra"},{i:"109983046", n:"Muhamad Sidni Ilham"},{i:"96101736", n:"Saepul Mustofa"},{i:"99054670", n:"Tofik Prebiana"},{i:"96273419", n:"Vicky Refiansyah"}],
+        "X_MPLB": [{i:"99725997", n:"Agustia Putri Rahmadhani"},{i:"3092115176", n:"Alvira Firdaus"},{i:"106750773", n:"Eneng Sovi Nurpajiah"},{i:"91323786", n:"Hilda Hervina"},{i:"3103376001", n:"Jihan Rinzani"},{i:"101740416", n:"Naila Putri Nur Hafizhah"},{i:"86772740", n:"Nasheila Widya"},{i:"104494308", n:"Nazwa Fadhila Furza"},{i:"94602409", n:"Oriza Sativa"},{i:"106327542", n:"Rani Novalia Putri"},{i:"102255451", n:"Ratna Nu Nengsih"},{i:"105567316", n:"Reni Lian Dari"},{i:"101641196", n:"Rini Rosita"},{i:"3087181290", n:"Silvi Dwi Rahma"},{i:"93841277", n:"Siska Oktaviani"},{i:"105167884", n:"Tiara Priscillya"}],
+        "XI_DKV": [{i:"74940530", n:"Agil Firdaus Nugraha"},{i:"87365578", n:"Alya Agustina"},{i:"94370445", n:"Delima Nur Nazma Hermansyah"},{i:"81396848", n:"Fahri Al Fattah"},{i:"88205734", n:"Fhadlan Irham"},{i:"84146547", n:"Jenni Agustin"},{i:"3087536650", n:"Khansa Septri Ramadhan"},{i:"98923268", n:"Nazwa Juniar"},{i:"81460392", n:"Restu Syaiful Rochman"},{i:"91460772", n:"Salsa Dila"},{i:"91032087", n:"Sasqya Rachmadani"},{i:"79636850", n:"Sayyid Abdullah Setiadji"}],
+        "XI_TJKT": [{i:"85107388", n:"Adam Ias"},{i:"98330850", n:"Afrizal Yudha Pratama"},{i:"97546072", n:"Anggi Maulana"},{i:"97857313", n:"Anjar Pamungkas"},{i:"82927758", n:"Dila Agustin"},{i:"87779327", n:"Fadhil Nazmulloh"},{i:"81082216", n:"Juanda"},{i:"3082985888", n:"Kartika"},{i:"92871895", n:"Malki Ramdani"},{i:"86578372", n:"Mochamad Revan Fadilah"},{i:"96286960", n:"Muhamad Wildan"},{i:"86864146", n:"Muhammad Allexcha Fachromi"},{i:"85562860", n:"Muhammad Iqbal"},{i:"99604246", n:"Muhammad Sayyid Putra Lesmana"},{i:"77119977", n:"Noval Ariyansah"},{i:"84456896", n:"Pratama Haryaji Ramadhan"},{i:"91566612", n:"Rahmadiyah"},{i:"94923034", n:"Ramadan Rizky Pratama"}],
+        "XI_MPLB": [{i:"86223764", n:"Cahaya Putri Anastazqia"},{i:"84489785", n:"Davina Mozalita"},{i:"3092619726", n:"Juwita Anggraeni"},{i:"87204264", n:"Kartika Agustin"},{i:"86472434", n:"Keysa Aprilia Permatasari"},{i:"82653387", n:"Nadin Septi Maharani"},{i:"98083975", n:"Nafa Ridha Mayahdilatifa"},{i:"85736287", n:"Nayla Siti Putriawan"},{i:"82510247", n:"Novita Amellia"},{i:"81271505", n:"Seni Salwa Rohimah"},{i:"93666802", n:"Sipa Karina"},{i:"74024162", n:"Siti Umayah"},{i:"87625018", n:"Zahra Mutia Ramadhani"}],
+        "XII_DKV": [{i:"78240729", n:"Abdul Azid"},{i:"72059819", n:"Ahmad Zahran Naufal"},{i:"76302672", n:"Aliah Naila Putri"},{i:"72181717", n:"Anita Fitriawati"},{i:"71899362", n:"Arfan Alfahri Nurahman"},{i:"85801749", n:"Asti Widianingsih"},{i:"83783055", n:"Azka Muhammad Nazhif"},{i:"83514989", n:"Febriyandani"},{i:"75895693", n:"Firmanudin Saputra"},{i:"85374046", n:"Fitri Nurjanah"},{i:"73666599", n:"Jaka Wijaya Fitra Laksana"},{i:"84733448", n:"Kania Nurhalizah"},{i:"78916872", n:"Karmila Sahrani"},{i:"74561403", n:"Muhamad Yusuf"},{i:"86890262", n:"Nabila Prasetiawati Surahmat"},{i:"85039995", n:"Naila Febriani"},{i:"71616440", n:"Resty Agnestiani"},{i:"78142563", n:"Rubby Haykal"},{i:"72739707", n:"Virgi Kasya Neody"}],
+        "XII_TJKT": [{i:"82856339", n:"Alief Surya Pratama"},{i:"51157250", n:"Arief Faturachman"},{i:"82047443", n:"Citra Haryanto"},{i:"71760704", n:"Dhesta Pratama"},{i:"83968489", n:"Fahmi Abdul Rochman"},{i:"87364474", n:"Nur Rahma Anggraeni"},{i:"64097286", n:"Raji Muhammad Hibatullah"},{i:"75218045", n:"Rasfa Alwan Syady"}],
+        "XII_MPLB": [{i:"81403462", n:"Alifah Nur Wahdha"},{i:"86272919", n:"Amanda Putri Kanza"},{i:"86396585", n:"Andini Nurmawati"},{i:"75657014", n:"Anggie Indriani"},{i:"86468438", n:"Chelsea Kirana Auliaayu"},{i:"89662405", n:"Delia Rahmawati"},{i:"74029109", n:"Erlita Putri"},{i:"87151504", n:"Ira Putri Ashifa"},{i:"71769896", n:"Jihan Neila Rizkia"},{i:"79056146", n:"Mufidah Anggri Maulani"},{i:"76529173", n:"Olga Nurul Azim"},{i:"64694457", n:"Raden Roro Nayla Nadya Wibowo"},{i:"82024610", n:"Radisti Triani Dewi"},{i:"87941374", n:"Rara Dwi Thaniya Baehaqi"},{i:"72734304", n:"Ririn Dwi Antika"},{i:"71552730", n:"Risma Rahmawati"},{i:"61097960", n:"Rizkiya Dwi Lutfiyani"},{i:"82604091", n:"Sipa Andriyani"},{i:"83051258", n:"Stevany Anggita Syafitri"},{i:"83120287", n:"Syabila Meidina Putri"}]
+    };
+
+    const accessControl = { "X_DKV":"NAS10","X_MPLB":"NAS10","X_TJKT":"NAS10","XI_DKV":"NAS11","XI_MPLB":"NAS11","XI_TJKT":"NAS11","XII_DKV":"NAS12","XII_MPLB":"NAS12","XII_TJKT":"NAS12" };
+
+    function bukaInputAkses() { 
+        document.getElementById('sectionAkses').classList.remove('hidden'); 
+        document.getElementById('sectionSiswa').classList.add('hidden');
+        document.querySelector('#tabelRekap tbody').innerHTML = ""; // Privasi KM antar kelas
+    }
+    
+    function verifikasiAkses() {
+        const k = document.getElementById('kelasSelect').value;
+        if (document.getElementById('kodeAkses').value === accessControl[k]) {
+            document.getElementById('sectionSiswa').classList.remove('hidden'); 
+            document.getElementById('sectionAkses').classList.add('hidden'); renderDaftarSiswa(k);
+        } else { alert("❌ Passcode Kelas Salah!"); }
+    }
+    
+    function renderDaftarSiswa(k) {
+        const s = document.getElementById('daftarSiswa'); s.innerHTML = "";
+        dataSekolah[k].forEach(x => { const o = document.createElement('option'); o.value = x.i; o.textContent = x.n; s.appendChild(o); });
+    }
+
+    function filterSiswa() {
+        const q = document.getElementById('cariNama').value.toLowerCase();
+        Array.from(document.getElementById('daftarSiswa').options).forEach(o => { o.style.display = o.text.toLowerCase().includes(q) ? "block" : "none"; });
+    }
+
+    function toggleAlasan() {
+        const s = document.querySelector('input[name="status"]:checked').value;
+        document.getElementById('boxAlasan').classList.toggle('hidden', s === "Alpa");
+    }
+
+    function toggleBukti() {
+        const sumber = document.getElementById('sumberInfo').value;
+        const boxNama = document.getElementById('boxNamaInput');
+        const boxUpload = document.getElementById('boxUpload');
+        boxNama.classList.toggle('hidden', !sumber.includes("Wali") && sumber !== "Keterangan Teman");
+        boxUpload.classList.toggle('hidden', sumber === "Wali Kelas - Lisan" || sumber === "Keterangan Teman");
+    }
+
+    async function simpanData() {
+        const s = document.getElementById('daftarSiswa');
+        if (s.selectedIndex === -1) return alert("⚠️ Pilih Nama!");
+        const status = document.querySelector('input[name="status"]:checked').value;
+        const sumber = document.getElementById('sumberInfo').value;
+        const extraName = document.getElementById('namaInputExtra').value;
+        const fileInput = document.getElementById('fotoFile');
+
+        if (status !== "Alpa") {
+            if ((sumber.includes("Wali") || sumber === "Keterangan Teman") && !extraName) return alert("Isi Namanya!");
+            if (sumber !== "Wali Kelas - Lisan" && sumber !== "Keterangan Teman" && !fileInput.files[0]) return alert("Upload Fotonya!");
+        }
+
+        const btn = document.getElementById('btnSimpan'); btn.innerHTML = "⏳ Mengirim..."; btn.disabled = true;
+
+        let fotoBase64 = "";
+        if (fileInput.files[0]) {
+            fotoBase64 = await new Promise(r => { const rd = new FileReader(); rd.onload = () => r(rd.result); rd.readAsDataURL(fileInput.files[0]); });
+        }
+
+        const ketFix = (status === "Alpa") ? "-" : (extraName ? `${sumber} (${extraName})` : sumber);
+
+        const p = { 
+            nama: s.options[s.selectedIndex].text, 
+            kelas: document.getElementById('kelasSelect').value, 
+            status: status, 
+            waktu: new Date().toLocaleString('id-ID'), 
+            foto: fotoBase64,
+            ket: ketFix
+        };
+
+        fetch(SCRIPT_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(p) })
+        .then(() => {
+            const row = document.getElementById('tabelRekap').getElementsByTagName('tbody')[0].insertRow(0);
+            row.innerHTML = `<td>${p.nama}</td><td>${p.status}</td><td>${p.ket}</td>`;
+            alert("🔥 Laporan Kelas Berhasil Terkirim!");
+            btn.innerHTML = "Kirim Laporan Kelas 🚀"; btn.disabled = false;
+        });
+    }
+
+    function exportToExcel() {
+        XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById("tabelRekap")), "Rekap_Presensi_Kelas.xlsx");
+    }
+</script>
+</body>
+</html>
